@@ -1,5 +1,5 @@
 CC = gcc
-CCFLAGS = -std=c99 -g -Wall -Wextra
+CCFLAGS = -std=c99 -g -Wall -Wextra -lreadline
 EXEC = mtush
 OBJS = mtush.o
 
