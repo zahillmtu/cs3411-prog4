@@ -33,12 +33,16 @@ void run(char *exec, char *args[]) {
     else if(pid == 0) {
         // The child process
         // Call execvp
-        execvp(exec, args);
+        if (execvp(exec, args) < 0) {
+            printf("An error occured running the program %s - Try again\n", exec);
+            return;
+        }
     }
     else {
         // wait for the child
         int status = 0;
         wait(&status);
+        return;
     }
     return;
 }
@@ -78,17 +82,19 @@ int main(void) {
         // read in the user input
         char *line = readline(dest);
         if (!line) {
-            printf("Error reading input, please try againi\n");
+            printf("Error reading input, please try again\n");
             continue;
         }
         else { // Do stuff with the input
-            char *toks = strtok(line, " ");
             // if the input is exit return
+            printf("This is line: %s\n", line);
             if (strcmp(line, "exit") == 0) {
                 free(line);
+                free(dest);
                 exit(EXIT_SUCCESS);
             }
             else {
+                char *toks = strtok(line, " ");
                 // run the command given
                 if (toks != NULL) {
                     // set the executable
@@ -107,6 +113,7 @@ int main(void) {
                 }
                 printf("You entered: %s\n", line);
                 free(line);
+                free(dest);
             }
         }
     }
