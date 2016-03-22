@@ -48,6 +48,33 @@ void run(char *exec, char *args[]) {
 }
 
 /**
+ * Function takes the args array and attempts to call chdir using arg[1]
+ * arg[1] should be set to the desired directory and no other input should
+ * be added after
+ */
+void callcd(char *args[]) {
+
+    int ret;
+
+    // Check to make sure it's just "cd" and the path
+    if (args[2] != NULL) {
+        printf("Error using cd - Try again\n");
+        return;
+    }
+    // If there is no path do nothing
+    if (args[1] == NULL) {
+        return;
+    }
+    // attempt to call chdir, if it fails print a message
+    ret = chdir(args[1]);
+    if (ret == -1) {
+        perror("chdir");
+        return;
+    }
+    return;
+}
+
+/**
  * This is the main function that runs the control for the mtush shell
  * It will run in a loop collecting input and calculating results until
  * the user types "exit".
@@ -108,6 +135,11 @@ int main(void) {
                         args[j] = toks;
                         toks = strtok(NULL, " ");
                         j = j + 1;
+                    }
+                    // if the exec is cd, run chdir()
+                    if (strcmp(exec, "cd") == 0) {
+                        callcd(args);
+                        continue;
                     }
                     // run the exec command
                     run(exec, args);
