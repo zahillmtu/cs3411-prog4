@@ -35,7 +35,7 @@ void run(char *exec, char *args[]) {
         // Call execvp
         if (execvp(exec, args) < 0) {
             printf("An error occured running the program %s - Try again\n", exec);
-            return;
+            exit(EXIT_SUCCESS);
         }
     }
     else {
