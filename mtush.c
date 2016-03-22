@@ -107,6 +107,7 @@ int main(void) {
                     while (toks != NULL) {
                         args[j] = toks;
                         toks = strtok(NULL, " ");
+                        j = j + 1;
                     }
                     // run the exec command
                     run(exec, args);
