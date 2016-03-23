@@ -48,6 +48,44 @@ void run(char *exec, char *args[]) {
 }
 
 /**
+ * Function to tokenize the string first by "|" and second by " "
+ * line should be set to the string to be tokenized, returns an
+ * array containing arrays of the commands
+ */
+void tokenize(char *cmds[64][64], char *line) {
+
+    char *piped[64] = { NULL }; // make sure array is null terminated
+
+    // first seperate by pipes
+    char *toks = strtok(line, "|");
+    if (toks != NULL) {
+        int j = 0;
+        // call again to get the next piece of the string
+        while (toks != NULL) {
+            piped[j] = toks;
+            toks = strtok(NULL, "|");
+            j = j + 1;
+        }
+    }
+
+    // Then seperate by spaces
+    int i = 0;
+    int k = 0;
+
+    while (piped[i] != NULL) {
+
+        toks = strtok(piped[i], " ");
+        while(toks != NULL) {
+            cmds[i][k] = toks;
+            toks = strtok(NULL, " ");
+            k = k + 1;
+        }
+        i = i + 1;
+    }
+    return;
+}
+
+/**
  * Function takes the args array and attempts to call chdir using arg[1]
  * arg[1] should be set to the desired directory and no other input should
  * be added after
@@ -121,21 +159,39 @@ int main(void) {
                 exit(EXIT_SUCCESS);
             }
             else {
-                char *toks = strtok(line, " ");
-                // run the command given
-                if (toks != NULL) {
-                    // set the executable
-                    char *exec = toks;
-                    char *args[64] = { NULL }; // make sure array is null terminated
-                    args[0] = exec; // first value must be set to program name
-                    int j = 1;
-                    // call again to get the next piece of the string
-                    toks = strtok(NULL, " ");
-                    while (toks != NULL) {
-                        args[j] = toks;
-                        toks = strtok(NULL, " ");
-                        j = j + 1;
-                    }
+                char *cmds[64][64] = {{ NULL }};
+                memset(cmds, 0, sizeof cmds);
+                tokenize(cmds, line);
+
+                // if there is no input just prompt again
+                if (cmds[0][0] == NULL) {
+                    continue;
+                }
+                char *exec = cmds[0][0];
+                char *args[64] = { NULL };
+                args[0] = exec;
+                int k = 1;
+                while (cmds[0][k] != NULL) {
+                    args[k] = cmds[0][k];
+                    k = k + 1;
+                }
+
+
+               // char *toks = strtok(line, " ");
+               // // run the command given
+               // if (toks != NULL) {
+               //     // set the executable
+               //     char *exec = toks;
+               //     char *args[64] = { NULL }; // make sure array is null terminated
+               //     args[0] = exec; // first value must be set to program name
+               //     int j = 1;
+               //     // call again to get the next piece of the string
+               //     toks = strtok(NULL, " ");
+               //     while (toks != NULL) {
+               //         args[j] = toks;
+               //         toks = strtok(NULL, " ");
+               //         j = j + 1;
+               //     }
                     // if the exec is cd, run chdir()
                     if (strcmp(exec, "cd") == 0) {
                         callcd(args);
@@ -143,11 +199,10 @@ int main(void) {
                     }
                     // run the exec command
                     run(exec, args);
-                }
+            }
                 printf("You entered: %s\n", line);
                 free(line);
                 free(dest);
-            }
         }
     }
     exit(EXIT_FAILURE);
