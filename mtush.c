@@ -124,6 +124,7 @@ void pipecmds(char *cmds[64][64]) {
         dup2(fd[WRITE_END], STDOUT_FILENO);
         if (execvp(cmd1, args1) < 0) {
             printf("An error occured running the program %s - Try again\n", cmd1);
+            close(fd[WRITE_END]); // close to ensure no errors
             exit(EXIT_FAILURE);
         }
     }
@@ -138,6 +139,7 @@ void pipecmds(char *cmds[64][64]) {
         dup2(fd[READ_END], STDIN_FILENO);
         if (execvp(cmd2, args2) < 0) {
             printf("An error occured running the program %s - Try again\n", cmd2);
+            close(fd[READ_END]);
             exit(EXIT_FAILURE);
         }
     }
@@ -147,7 +149,9 @@ void pipecmds(char *cmds[64][64]) {
     close(fd[WRITE_END]);
 
     int st;
-    waitpid(child2, &st, 0);
+    int st2;
+    waitpid(child1, &st, 0);
+    waitpid(child2, &st2, 0);
 }
 
 /**
@@ -218,9 +222,19 @@ int main(void) {
         else { // Do stuff with the input
             // if the input is exit return
             printf("This is line: %s\n", line);
+            // Check if malformed
+            if (line[0] == '|' || line[strlen(line) - 1] == '|') {
+                printf("Error - Malformed cmd\n");
+                free(line);
+                free(dest);
+                free(cwd);
+                continue;
+            }
+
             if (strcmp(line, "exit") == 0) {
                 free(line);
                 free(dest);
+                free(cwd);
                 exit(EXIT_SUCCESS);
             }
             else {
@@ -234,6 +248,9 @@ int main(void) {
 
                 // if there is no input just prompt again
                 if (cmds[0][0] == NULL) {
+                    free(line);
+                    free(dest);
+                    free(cwd);
                     continue;
                 }
                 else if (cmds[1][0] != NULL) { // There was a pipe
@@ -279,6 +296,7 @@ int main(void) {
                 printf("You entered: %s\n", line);
                 free(line);
                 free(dest);
+                free(cwd);
         }
     }
     exit(EXIT_FAILURE);
