@@ -16,6 +16,8 @@
 #define GRN  "\001\x1B[32m\002" // for the prompt
 #define NRM  "\001\x1B[0m\002" // to set the color back to normal
 
+#define READ_END 0
+#define WRITE_END 1
 
 /**
  * Function to fork a process and run the execvp command. exec should be set
@@ -35,7 +37,7 @@ void run(char *exec, char *args[]) {
         // Call execvp
         if (execvp(exec, args) < 0) {
             printf("An error occured running the program %s - Try again\n", exec);
-            exit(EXIT_SUCCESS);
+            exit(EXIT_FAILURE);
         }
     }
     else {
@@ -80,9 +82,72 @@ void tokenize(char *cmds[64][64], char *line) {
             toks = strtok(NULL, " ");
             k = k + 1;
         }
+        k = 0;
         i = i + 1;
     }
     return;
+}
+
+/**
+ * Function to pipe commands together
+ */
+void pipecmds(char *cmds[64][64]) {
+
+    char *cmd1 = cmds[0][0];
+    char *cmd2 = cmds[1][0];
+    char *args1[64] = { NULL };
+    char *args2[64] = { NULL };
+    args1[0] = cmd1;
+    args2[0] = cmd2;
+    // separate the args
+    int k = 1;
+    while (cmds[0][k] != NULL) {
+        args1[k] = cmds[0][k];
+        k = k + 1;
+    }
+    int j = 1;
+    while (cmds[1][j] != NULL) {
+        args2[j] = cmds[1][j];
+        j = j + 1;
+    }
+    // fork the processes and run the cmds
+    int fd[2];
+    pipe(fd);
+
+    int child1 = fork();
+    if (child1 == 0) {
+        // Run the command and push output into pipe
+        // Close end not used
+        close(fd[READ_END]);
+
+        // change write end from stdout to pipe
+        dup2(fd[WRITE_END], STDOUT_FILENO);
+        if (execvp(cmd1, args1) < 0) {
+            printf("An error occured running the program %s - Try again\n", cmd1);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    int child2 = fork();
+    if (child2 == 0) {
+        // Run the command and push output into pipe
+        // Close end not used
+        close(fd[WRITE_END]);
+
+        // change write end from stdout to pipe
+        dup2(fd[READ_END], STDIN_FILENO);
+        if (execvp(cmd2, args2) < 0) {
+            printf("An error occured running the program %s - Try again\n", cmd2);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    // Only parent should get here, clean up
+    close(fd[READ_END]);
+    close(fd[WRITE_END]);
+
+    int st;
+    waitpid(child2, &st, 0);
 }
 
 /**
@@ -161,19 +226,36 @@ int main(void) {
             else {
                 char *cmds[64][64] = {{ NULL }};
                 memset(cmds, 0, sizeof cmds);
+                char *exec;
+                char *args[64] = { NULL };
+
+                // Separate the line into usable chunks
                 tokenize(cmds, line);
 
                 // if there is no input just prompt again
                 if (cmds[0][0] == NULL) {
                     continue;
                 }
-                char *exec = cmds[0][0];
-                char *args[64] = { NULL };
-                args[0] = exec;
-                int k = 1;
-                while (cmds[0][k] != NULL) {
-                    args[k] = cmds[0][k];
-                    k = k + 1;
+                else if (cmds[1][0] != NULL) { // There was a pipe
+
+                    pipecmds(cmds);
+
+                }
+                else { // No pipe
+                    exec = cmds[0][0];
+                    args[0] = exec;
+                    int k = 1;
+                    while (cmds[0][k] != NULL) {
+                        args[k] = cmds[0][k];
+                        k = k + 1;
+                    }
+                    // if cd then call chdir()
+                    if (strcmp(exec, "cd") == 0) {
+                        callcd(args);
+                        continue;
+                    }
+                    // run the exec command
+                    run(exec, args);
                 }
 
 
@@ -193,12 +275,6 @@ int main(void) {
                //         j = j + 1;
                //     }
                     // if the exec is cd, run chdir()
-                    if (strcmp(exec, "cd") == 0) {
-                        callcd(args);
-                        continue;
-                    }
-                    // run the exec command
-                    run(exec, args);
             }
                 printf("You entered: %s\n", line);
                 free(line);
